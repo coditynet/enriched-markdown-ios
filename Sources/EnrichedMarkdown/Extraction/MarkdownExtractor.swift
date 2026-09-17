@@ -108,6 +108,8 @@ extension MarkdownExtractor {
         let isUnderline: Bool
         let isSuperscript: Bool
         let isSubscript: Bool
+        let isHighlight: Bool
+        let isSpoiler: Bool
         let linkURL: String?
 
         init(attrs: [NSAttributedString.Key: Any]) {
@@ -118,15 +120,11 @@ extension MarkdownExtractor {
             isUnderline = (MarkdownAttributeValue.intValue(from: attrs[.underlineStyle]) ?? 0) != 0
             isSuperscript = MarkdownAttributeValue.boolValue(from: attrs[MarkdownAttribute.superscript])
             isSubscript = MarkdownAttributeValue.boolValue(from: attrs[MarkdownAttribute.subscript])
+            isHighlight = MarkdownAttributeValue.boolValue(from: attrs[MarkdownAttribute.highlight])
+            // Concealed or revealed: the source had the markers either way.
+            isSpoiler = attrs[MarkdownAttribute.spoiler] != nil
 
-            switch attrs[.link] {
-            case let url as URL:
-                linkURL = url.absoluteString
-            case let string as String:
-                linkURL = string
-            default:
-                linkURL = nil
-            }
+            linkURL = MarkdownAttributeValue.linkString(from: MarkdownAttributeValue.sourceLink(in: attrs))
         }
     }
 }
@@ -159,8 +157,18 @@ private extension MarkdownExtractor {
         }
 
         if let table = attrs[.attachment] as? TableAttachment {
-            appendTable(table, to: &result, state: &state)
+            appendBlockElement(table.markdownText(), to: &result, state: &state)
             return
+        }
+
+        var text = text
+        if let attachment = attrs[.attachment] as? any MarkdownPluginAttachment {
+            if attachment.isBlock {
+                appendBlockElement(attachment.markdownText(), to: &result, state: &state)
+                return
+            }
+            // Inline plugin attachments reconstruct like any other inline run.
+            text = attachment.markdownText()
         }
 
         if text == "\u{FFFC}" {
@@ -171,6 +179,12 @@ private extension MarkdownExtractor {
         // padding spacers never open or close fences.
         if text.allSatisfy({ $0 == "\n" }) {
             appendNewlineRun(attrs: attrs, to: &result, state: &state)
+            return
+        }
+
+        if let type = attrs[MarkdownAttribute.admonitionHeader] as? String {
+            flushHeading(&result, state: &state)
+            appendAdmonitionHeader(type, attrs: attrs, to: &result, state: &state)
             return
         }
 
@@ -213,14 +227,15 @@ private extension MarkdownExtractor {
         state.listDepth = -1
     }
 
-    static func appendTable(
-        _ table: TableAttachment,
+    /// Emits a standalone block, leaving any heading, list, or blockquote context.
+    static func appendBlockElement(
+        _ markdown: String,
         to result: inout String,
         state: inout ExtractionState
     ) {
         flushHeading(&result, state: &state)
         ensureBlankLine(&result)
-        result += table.markdownText() + "\n"
+        result += markdown + "\n"
         state.needsBlankLine = true
         state.blockquoteDepth = -1
         state.listDepth = -1
@@ -259,6 +274,32 @@ private extension MarkdownExtractor {
         }
 
         ensureBlankLine(&result)
+    }
+
+    /// The `> [!NOTE]` line that opens an admonition. The rendered title is
+    /// chrome the syntax implies, so it is not copied as text.
+    static func appendAdmonitionHeader(
+        _ type: String,
+        attrs: [NSAttributedString.Key: Any],
+        to result: inout String,
+        state: inout ExtractionState
+    ) {
+        let blockquoteDepth = MarkdownAttributeValue.intValue(from: attrs[MarkdownAttribute.blockquoteDepth]) ?? 0
+        let listDepth = MarkdownAttributeValue.intValue(from: attrs[MarkdownAttribute.listDepth])
+        state.blockquoteDepth = blockquoteDepth
+        if let listDepth {
+            state.listDepth = listDepth
+        }
+
+        if state.needsBlankLine, !result.isEmpty {
+            ensureBlankLine(&result)
+            state.needsBlankLine = false
+        } else if !isAtLineStart(result) {
+            result += "\n"
+        }
+
+        result += linePrefix(for: type, attrs: attrs, blockquoteDepth: blockquoteDepth, listDepth: listDepth)
+            + "[!\(type.uppercased())]\n"
     }
 
     static func accumulateHeading(
@@ -444,6 +485,12 @@ private extension MarkdownExtractor {
         }
         if let linkURL = traits.linkURL {
             result = "[\(result)](\(linkURL))"
+        }
+        if traits.isHighlight {
+            result = "==\(result)=="
+        }
+        if traits.isSpoiler {
+            result = "||\(result)||"
         }
 
         return result
