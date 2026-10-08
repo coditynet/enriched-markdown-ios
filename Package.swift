@@ -41,12 +41,12 @@ let package = Package(
             path: "Sources/EnrichedMarkdown"
         ),
         // Prebuilt RaTeX layout engine (Rust behind a C FFI; imports as
-        // RaTeXFFI), pinned to the same release and sha256 as the monorepo's
-        // vendor/ratex-version.json. Every consumer's resolve hits this URL,
-        // so it should move under software-mansion-labs control before release.
+        // RaTeXFFI): erweixin/RaTeX v0.1.14, re-hosted on this fork's
+        // releases with the same sha256 as the monorepo's
+        // vendor/ratex-version.json.
         .binaryTarget(
             name: "RaTeX",
-            url: "https://github.com/erweixin/RaTeX/releases/download/v0.1.14/RaTeX.xcframework.zip",
+            url: "https://github.com/coditynet/enriched-markdown-ios/releases/download/ratex-v0.1.14/RaTeX.xcframework.zip",
             checksum: "16b84a5e9b9f80ed4910c490f96dda047662e9bdd0934817ecf4464cf02581f2"
         ),
         // Vendor/'s upstream RaTeX sources (see Vendor/LICENSE) and the KaTeX
