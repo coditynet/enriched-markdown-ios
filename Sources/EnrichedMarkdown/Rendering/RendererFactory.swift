@@ -4,7 +4,8 @@ final class RendererFactory {
     private let config: MarkdownStyleConfig
     private let imageRequestHeaders: [String: String]
     private let plugins: [any MarkdownRenderPlugin]
-    private var cache: [NodeType: NodeRenderer] = [:]
+    /// Per type, the plugins' renderers in order, then the built-in one.
+    private var cache: [NodeType: [NodeRenderer]] = [:]
     private lazy var childrenOnlyRenderer = ChildrenOnlyRenderer(factory: self)
 
     init(
@@ -17,14 +18,17 @@ final class RendererFactory {
         self.plugins = plugins
     }
 
-    func renderer(for type: NodeType) -> NodeRenderer {
-        if let cached = cache[type] {
-            return cached
+    /// The first renderer for the node's type that claims it.
+    func renderer(for node: MarkdownASTNode) -> NodeRenderer {
+        let candidates = renderers(for: node.type)
+        if candidates.count == 1 {
+            return candidates[0]
         }
+        return candidates.first { $0.canRender(node) } ?? childrenOnlyRenderer
+    }
 
-        let renderer = createRenderer(for: type)
-        cache[type] = renderer
-        return renderer
+    func render(_ node: MarkdownASTNode, into output: NSMutableAttributedString, context: RenderContext) {
+        renderer(for: node).render(node: node, into: output, context: context)
     }
 
     func renderChildren(
@@ -33,16 +37,22 @@ final class RendererFactory {
         context: RenderContext
     ) {
         for child in node.children {
-            renderer(for: child.type).render(node: child, into: output, context: context)
+            render(child, into: output, context: context)
         }
     }
 
-    private func createRenderer(for type: NodeType) -> NodeRenderer {
-        for plugin in plugins {
-            if let renderer = plugin.renderer(for: type, config: config) {
-                return renderer
-            }
+    private func renderers(for type: NodeType) -> [NodeRenderer] {
+        if let cached = cache[type] {
+            return cached
         }
+
+        var renderers = plugins.compactMap { $0.renderer(for: type, config: config) }
+        renderers.append(createBuiltInRenderer(for: type))
+        cache[type] = renderers
+        return renderers
+    }
+
+    private func createBuiltInRenderer(for type: NodeType) -> NodeRenderer {
         if let renderer = createInlineRenderer(for: type) {
             return renderer
         }

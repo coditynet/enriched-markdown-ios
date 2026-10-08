@@ -72,7 +72,7 @@ final class TableRenderer: NodeRenderer {
         style: TableAttachmentStyle
     ) -> NSAttributedString {
         let cellOutput = NSMutableAttributedString()
-        let cellContext = RenderContext()
+        let cellContext = RenderContext(factory: factory)
         cellContext.setBlockStyle(
             font: cellFont(isHeader: isHeader, style: style),
             color: isHeader ? style.headerTextColor : style.textColor

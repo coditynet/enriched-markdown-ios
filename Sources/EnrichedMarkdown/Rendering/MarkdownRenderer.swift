@@ -16,7 +16,10 @@ public enum MarkdownRenderer {
         )
     }
 
-    package static func render(
+    /// `render` with `plugins` installed, as `.markdownRenderPlugin(_:)`
+    /// installs them on a view. Their `defaultTheme`s are not applied; layer
+    /// them into the themes `config` is resolved from.
+    public static func render(
         _ markdown: String,
         config: MarkdownStyleConfig,
         flags: Md4cFlags,

@@ -13,6 +13,20 @@ final class BlockquoteRenderer: NodeRenderer {
     }
 
     func render(node: MarkdownASTNode, into output: NSMutableAttributedString, context: RenderContext) {
+        if let customType = Self.customAdmonitionType(of: node) {
+            // No plugin claimed it: a plain quote that keeps its tag line.
+            let tag = MarkdownASTNode(
+                type: .paragraph,
+                children: [MarkdownASTNode(type: .text, content: "[!\(customType)]")]
+            )
+            render(
+                node: MarkdownASTNode(type: .blockquote, children: [tag] + node.children),
+                into: output,
+                context: context
+            )
+            return
+        }
+
         let admonition = Self.admonitionType(of: node)
         context.enterBlockquote(admonition: admonition)
         let levels = context.blockquoteLevels
@@ -35,6 +49,13 @@ final class BlockquoteRenderer: NodeRenderer {
         guard output.length > start else { return }
 
         applyStylingAndSpacing(to: output, start: start, end: output.length, levels: levels)
+    }
+
+    /// The tag of an admonition that is not a GitHub alert (`> [!MERKE]`).
+    private static func customAdmonitionType(of node: MarkdownASTNode) -> String? {
+        guard node.type == .admonition, let type = node.attribute("admonitionType"),
+              AdmonitionType(rawValue: type) == nil else { return nil }
+        return type
     }
 
     private static func admonitionType(of node: MarkdownASTNode) -> AdmonitionType? {

@@ -5364,6 +5364,8 @@ struct MD_CONTAINER_tag {
     unsigned is_task            : 1;
     unsigned is_admonition      : 1;
     unsigned admonition_type    : 3;
+    unsigned admonition_size    : 8;    /* MD_ADMONITION_CUSTOM: tag length. */
+    OFF admonition_off;                 /* MD_ADMONITION_CUSTOM: tag offset. */
     unsigned start;
     unsigned mark_indent;
     unsigned contents_indent;
@@ -5606,6 +5608,21 @@ abort:
 
 static const MD_CHAR* MD_ADMONITION_TAGS[] = { _T("note"), _T("tip"), _T("important"), _T("warning"), _T("caution") };
 
+/* Admonition type for any other `[!TAG]` (ASCII letters, digits, '-', '_'),
+ * reported with the tag text as written. The block's `data` then holds
+ * MD_ADMONITION_CUSTOM_DATA plus the tag length and `n_lines` its offset. */
+#define MD_ADMONITION_CUSTOM        7
+#define MD_ADMONITION_CUSTOM_DATA   0x8000
+#define MD_ADMONITION_MAX_TAG_SIZE  32
+
+static unsigned
+md_admonition_block_data(const MD_CONTAINER* c)
+{
+    if(c->admonition_type == MD_ADMONITION_CUSTOM)
+        return MD_ADMONITION_CUSTOM_DATA | c->admonition_size;
+    return c->admonition_type;
+}
+
 static int
 md_process_all_blocks(MD_CTX* ctx)
 {
@@ -5649,9 +5666,13 @@ md_process_all_blocks(MD_CTX* ctx)
 
             case MD_BLOCK_ADMONITION:
                 adm_substr_offsets[0] = 0;
-                adm_substr_offsets[1] = md_strlen(MD_ADMONITION_TAGS[block->data]);
-
-                det.adm.type.text = MD_ADMONITION_TAGS[block->data];
+                if(block->data & MD_ADMONITION_CUSTOM_DATA) {
+                    adm_substr_offsets[1] = block->data & ~MD_ADMONITION_CUSTOM_DATA;
+                    det.adm.type.text = STR(block->n_lines);
+                } else {
+                    adm_substr_offsets[1] = md_strlen(MD_ADMONITION_TAGS[block->data]);
+                    det.adm.type.text = MD_ADMONITION_TAGS[block->data];
+                }
                 det.adm.type.size = adm_substr_offsets[1];
                 det.adm.type.substr_types = adm_substr_types;
                 det.adm.type.substr_offsets = adm_substr_offsets;
@@ -6444,7 +6465,8 @@ md_enter_child_containers(MD_CTX* ctx, int n_children)
             case _T('>'):
                 MD_CHECK(md_push_container_bytes(ctx,
                                 (c->is_admonition ? MD_BLOCK_ADMONITION : MD_BLOCK_QUOTE),
-                                0, c->admonition_type, MD_BLOCK_CONTAINER_OPENER));
+                                c->admonition_off, md_admonition_block_data(c),
+                                MD_BLOCK_CONTAINER_OPENER));
                 break;
 
             default:
@@ -6486,7 +6508,8 @@ md_leave_child_containers(MD_CTX* ctx, int n_keep)
             case _T('>'):
                 MD_CHECK(md_push_container_bytes(ctx,
                                 (c->is_admonition ? MD_BLOCK_ADMONITION : MD_BLOCK_QUOTE),
-                                0, c->admonition_type, MD_BLOCK_CONTAINER_CLOSER));
+                                c->admonition_off, md_admonition_block_data(c),
+                                MD_BLOCK_CONTAINER_CLOSER));
                 break;
 
             default:
@@ -7045,21 +7068,40 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
         /* Check for admonition tag. */
         if((ctx->parser.flags & MD_FLAG_ADMONITIONS)  &&  n_children > 0  &&
            ctx->containers[ctx->n_containers-1].ch == _T('>')  &&  line->type == MD_LINE_TEXT  &&
-           3 < line->end - line->beg  && line->end - line->beg < 16  &&
+           3 < line->end - line->beg  &&  line->end - line->beg <= MD_ADMONITION_MAX_TAG_SIZE + 3  &&
            CH(line->beg) == _T('[') && CH(line->beg+1) == _T('!') && CH(line->end-1) == _T(']'))
         {
+            MD_CONTAINER* c = &ctx->containers[ctx->n_containers-1];
+            OFF tag_beg = line->beg + 2;
+            SZ tag_size = line->end - line->beg - 3;
             unsigned i;
+            OFF off;
 
             for(i = 0; i < SIZEOF_ARRAY(MD_ADMONITION_TAGS); i++) {
-                if(line->end - line->beg == md_strlen(MD_ADMONITION_TAGS[i]) + 3  &&
-                   md_ascii_case_eq(STR(line->beg+2), MD_ADMONITION_TAGS[i], line->end - line->beg - 3))
+                if(tag_size == md_strlen(MD_ADMONITION_TAGS[i])  &&
+                   md_ascii_case_eq(STR(tag_beg), MD_ADMONITION_TAGS[i], tag_size))
                 {
-                    ctx->containers[ctx->n_containers-1].is_admonition = true;
-                    ctx->containers[ctx->n_containers-1].admonition_type = i;
-                    line->type = MD_LINE_BLANK;
+                    c->is_admonition = true;
+                    c->admonition_type = i;
                     break;
                 }
             }
+
+            if(!c->is_admonition) {
+                for(off = tag_beg; off < tag_beg + tag_size; off++) {
+                    if(!ISALNUM(off)  &&  CH(off) != _T('-')  &&  CH(off) != _T('_'))
+                        break;
+                }
+                if(off == tag_beg + tag_size) {
+                    c->is_admonition = true;
+                    c->admonition_type = MD_ADMONITION_CUSTOM;
+                    c->admonition_off = tag_beg;
+                    c->admonition_size = tag_size;
+                }
+            }
+
+            if(c->is_admonition)
+                line->type = MD_LINE_BLANK;
         }
 
         /* Enter all the child container blocks. */

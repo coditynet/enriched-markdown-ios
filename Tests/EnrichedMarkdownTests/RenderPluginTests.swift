@@ -264,6 +264,37 @@ final class RenderPluginTests: XCTestCase {
         XCTAssertEqual(quotedStyle?.maximumLineHeight, 0)
     }
 
+    // MARK: - Per-node claims (DemoPlugin, PublicRenderPluginTests.swift)
+
+    func testClaimedCodeBlockCopiesAsMarkdown() {
+        let source = "before\n\n```demo\nhello\n```\n\nafter"
+        let rendered = render(source, plugins: [DemoPlugin()])
+
+        let extracted = MarkdownExtractor.extractMarkdown(
+            from: rendered,
+            in: NSRange(location: 0, length: rendered.length)
+        )
+        XCTAssertEqual(
+            extracted?.trimmingCharacters(in: .whitespacesAndNewlines),
+            "before\n\n```demo\nhello\n```\n\nafter"
+        )
+
+        let afterLocation = (rendered.string as NSString).range(of: "after").location
+        let copied = MarkdownExtractor.markdown(
+            for: NSRange(location: 0, length: afterLocation),
+            in: rendered,
+            sourceMarkdown: source,
+            flags: MarkdownRenderer.effectiveFlags(.commonMark, plugins: [DemoPlugin()])
+        )
+        XCTAssertEqual(copied, "before\n\n```demo\nhello\n```")
+    }
+
+    func testClaimedCodeBlockIsOneAccessibilityElement() {
+        let rendered = render("before\n\n```demo\nhello\n```", plugins: [DemoPlugin()])
+        let labels = MarkdownAccessibilityElementBuilder.specs(for: rendered).map(\.label)
+        XCTAssertEqual(labels, ["before", "Demo"])
+    }
+
     private func paragraphStyle(in rendered: NSAttributedString) -> NSParagraphStyle? {
         guard rendered.length > 0 else { return nil }
         return rendered.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle

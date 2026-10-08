@@ -63,7 +63,10 @@ enum MarkdownAttribute {
     static let sourceRange = NSAttributedString.Key("EnrichedMarkdownSourceRange")
 }
 
-package final class RenderContext {
+/// Per-render state handed to every `NodeRenderer`: the enclosing block's
+/// text style and nesting, and the entry points for rendering nested nodes.
+public final class RenderContext {
+    private weak var factory: RendererFactory?
     private(set) var currentBlockType: BlockType = .none
     private(set) var currentBlockStyle: BlockStyle?
 
@@ -79,7 +82,9 @@ package final class RenderContext {
     /// Set while rendering the synthetic paragraph around a bare root-level
     /// plugin block node (see `MarkdownRenderPlugin.rootBlockNodeTypes`).
     var pluginBlockMargins: BlockMargins?
-    package var rendersPluginBlock: Bool { pluginBlockMargins != nil }
+    /// True while a plugin node renders as a block of its own (see
+    /// `renderBlock(_:margins:into:)`), false when it sits in running text.
+    public var rendersPluginBlock: Bool { pluginBlockMargins != nil }
 
     private static let blockSpacerTemplate: NSParagraphStyle = {
         let style = NSMutableParagraphStyle()
@@ -87,6 +92,37 @@ package final class RenderContext {
         style.maximumLineHeight = 1
         return style
     }()
+
+    init(factory: RendererFactory? = nil) {
+        self.factory = factory
+    }
+
+    /// Renders `node` as the document would here: the first plugin renderer
+    /// claiming it, else the built-in. A renderer must not pass its own node
+    /// back unchanged; decline it in `canRender(_:)` instead.
+    public func render(_ node: MarkdownASTNode, into output: NSMutableAttributedString) {
+        factory?.render(node, into: output, context: self)
+    }
+
+    /// Renders `node`'s children in order, as built-in container renderers do.
+    public func renderChildren(of node: MarkdownASTNode, into output: NSMutableAttributedString) {
+        factory?.renderChildren(of: node, into: output, context: self)
+    }
+
+    /// Renders `node` as its own block — on a fresh line, with the paragraph
+    /// style's margins overridden by `margins`, and indented like a
+    /// paragraph inside lists and quotes. `node`'s renderer runs again inside
+    /// with `rendersPluginBlock` true; call this when it is false.
+    public func renderBlock(
+        _ node: MarkdownASTNode,
+        margins: BlockMargins = BlockMargins(),
+        into output: NSMutableAttributedString
+    ) {
+        let previous = pluginBlockMargins
+        pluginBlockMargins = margins
+        render(MarkdownASTNode(type: .paragraph, children: [node]), into: output)
+        pluginBlockMargins = previous
+    }
 
     func reset() {
         currentBlockType = .none
@@ -127,7 +163,9 @@ package final class RenderContext {
         currentBlockStyle
     }
 
-    package func getTextAttributes() -> [NSAttributedString.Key: Any] {
+    /// Font and color of the enclosing block's text; inline renderers start
+    /// from these.
+    public func getTextAttributes() -> [NSAttributedString.Key: Any] {
         guard let blockStyle = currentBlockStyle else {
             return [:]
         }

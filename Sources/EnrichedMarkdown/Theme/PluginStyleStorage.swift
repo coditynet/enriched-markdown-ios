@@ -1,30 +1,30 @@
 import Foundation
 
-/// A style record an optional module keeps in `MarkdownStyleConfig.pluginStyles`,
+/// A style record a plugin keeps in `MarkdownStyleConfig.pluginStyles`,
 /// written by its theme elements and read by its renderers.
-package protocol PluginStyle: Equatable, Sendable {
+public protocol PluginStyle: Equatable, Sendable {
     /// Overlays `other`'s set properties, the way the built-in styles merge.
     mutating func merge(_ other: Self)
 }
 
 /// `PluginStyle` records keyed by their type, one per module concern.
-package struct PluginStyleStorage: Equatable, Sendable {
+public struct PluginStyleStorage: Equatable, Sendable {
     private var values: [ObjectIdentifier: any PluginStyle] = [:]
 
-    package init() {}
+    public init() {}
 
-    package subscript<Style: PluginStyle>(_ type: Style.Type) -> Style? {
+    public subscript<Style: PluginStyle>(_ type: Style.Type) -> Style? {
         get { values[ObjectIdentifier(type)] as? Style }
         set { values[ObjectIdentifier(type)] = newValue }
     }
 
-    package mutating func merge(_ other: PluginStyleStorage) {
+    public mutating func merge(_ other: PluginStyleStorage) {
         for (key, style) in other.values {
             values[key] = values[key].map { $0.merged(with: style) } ?? style
         }
     }
 
-    package static func == (lhs: PluginStyleStorage, rhs: PluginStyleStorage) -> Bool {
+    public static func == (lhs: PluginStyleStorage, rhs: PluginStyleStorage) -> Bool {
         guard lhs.values.count == rhs.values.count else { return false }
         return lhs.values.allSatisfy { key, style in
             rhs.values[key].map { style.isEqual(to: $0) } ?? false

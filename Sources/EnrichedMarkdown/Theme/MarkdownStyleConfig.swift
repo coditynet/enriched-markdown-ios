@@ -485,9 +485,10 @@ public struct MarkdownStyleConfig: Equatable, Sendable {
     public var list: ListStyle
     public var taskList: TaskListStyle
     public var table: TableStyle
-    /// Styles of optional modules' elements (`EnrichedMarkdownLaTeX`'s math
-    /// panel, say), keyed by the module's own record type.
-    package var pluginStyles = PluginStyleStorage()
+    /// Styles of plugins' elements (`EnrichedMarkdownLaTeX`'s math panel,
+    /// say), keyed by the plugin's own record type: its `MarkdownThemeContent`
+    /// elements write them, its renderers read them.
+    public var pluginStyles = PluginStyleStorage()
 
     public init(
         paragraph: ElementStyle = ElementStyle(),

@@ -14,7 +14,7 @@ import Foundation
 /// content still cannot be matched is left unannotated (cursor unmoved).
 /// The attribute contract matches what a parser-side implementation would
 /// emit, so downstream code is provenance-agnostic.
-package enum SourceOffsetAnnotator {
+public enum SourceOffsetAnnotator {
     static let sourceStartKey = "srcStart"
     static let sourceEndKey = "srcEnd"
 
@@ -40,8 +40,10 @@ package enum SourceOffsetAnnotator {
     }
 
     /// Adds the node's range to a run's attributes under
-    /// `MarkdownAttribute.sourceRange`, when annotated.
-    package static func tagSourceRange(in attributes: inout [NSAttributedString.Key: Any], of node: MarkdownASTNode) {
+    /// `MarkdownAttribute.sourceRange`, when annotated. Plugin renderers tag
+    /// their attachment runs so Copy as Markdown can slice the source
+    /// verbatim.
+    public static func tagSourceRange(in attributes: inout [NSAttributedString.Key: Any], of node: MarkdownASTNode) {
         if let value = sourceRangeValue(of: node) {
             attributes[MarkdownAttribute.sourceRange] = value
         }

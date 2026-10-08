@@ -29,6 +29,7 @@ public:
   static const std::string ATTR_TITLE;
   static const std::string ATTR_FENCE_CHAR;
   static const std::string ATTR_LANGUAGE;
+  static const std::string ATTR_INFO;
   static const std::string ATTR_IS_TASK;
   static const std::string ATTR_TASK_CHECKED;
   static const std::string ATTR_START;
@@ -181,6 +182,11 @@ public:
           std::string lang = impl->getAttributeText(&codeDetail->lang);
           if (!lang.empty()) {
             node->setAttribute(ATTR_LANGUAGE, lang);
+          }
+          // Full info string: the language plus anything after it
+          std::string info = impl->getAttributeText(&codeDetail->info);
+          if (!info.empty()) {
+            node->setAttribute(ATTR_INFO, info);
           }
         }
         impl->pushNode(node);
@@ -882,6 +888,7 @@ const std::string MD4CParser::Impl::ATTR_URL = "url";
 const std::string MD4CParser::Impl::ATTR_TITLE = "title";
 const std::string MD4CParser::Impl::ATTR_FENCE_CHAR = "fenceChar";
 const std::string MD4CParser::Impl::ATTR_LANGUAGE = "language";
+const std::string MD4CParser::Impl::ATTR_INFO = "info";
 const std::string MD4CParser::Impl::ATTR_IS_TASK = "isTask";
 const std::string MD4CParser::Impl::ATTR_TASK_CHECKED = "taskChecked";
 const std::string MD4CParser::Impl::ATTR_START = "start";
