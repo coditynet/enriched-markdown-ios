@@ -3,7 +3,7 @@ import UIKit
 /// Tags `||spoiler||` text. `SpoilerConcealment` hides it in a post-pass and
 /// the text view draws the overlay.
 final class SpoilerRenderer: NodeRenderer {
-    private let factory: RendererFactory
+    private unowned let factory: RendererFactory
 
     init(factory: RendererFactory) {
         self.factory = factory

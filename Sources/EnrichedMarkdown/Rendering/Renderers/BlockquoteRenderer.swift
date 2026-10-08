@@ -4,7 +4,7 @@ import UIKit
 /// same quote with a tinted bar and a bold tinted title paragraph whose head
 /// indent reserves a column for the icon the decoration view draws.
 final class BlockquoteRenderer: NodeRenderer {
-    private let factory: RendererFactory
+    private unowned let factory: RendererFactory
     private let config: MarkdownStyleConfig
 
     init(factory: RendererFactory, config: MarkdownStyleConfig) {

@@ -13,7 +13,7 @@ final class BaselineShiftRenderer: NodeRenderer {
     static let defaultSuperscriptBaselineOffsetScale: CGFloat = 0.35
     static let defaultSubscriptBaselineOffsetScale: CGFloat = 0.20
 
-    private let factory: RendererFactory
+    private unowned let factory: RendererFactory
     private let attributeKey: NSAttributedString.Key
 
     init(factory: RendererFactory, attributeKey: NSAttributedString.Key) {
