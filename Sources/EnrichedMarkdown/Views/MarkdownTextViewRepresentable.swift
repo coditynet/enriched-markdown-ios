@@ -3,6 +3,8 @@ import UIKit
 
 struct MarkdownTextViewRepresentable: UIViewRepresentable {
     let attributedText: NSAttributedString
+    var lineage: StreamingLineage?
+    var fadesInText = false
     let source: RenderedSource?
     let styleConfig: MarkdownStyleConfig
     let onLinkPress: ((URL) -> Void)?
@@ -39,7 +41,7 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
         textView.spoilerOverlays.provider = spoilerOverlay
         textView.onSpoilerTap = onSpoilerTap
         textView.accessibilityLabels = accessibilityLabels
-        textView.setMarkdownAttributedText(attributedText)
+        textView.setMarkdownAttributedText(attributedText, lineage: lineage, fadesIn: fadesInText)
     }
 
     static func dismantleUIView(_ uiView: MarkdownTextView, coordinator: Coordinator) {

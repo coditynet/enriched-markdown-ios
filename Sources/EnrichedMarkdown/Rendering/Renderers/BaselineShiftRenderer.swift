@@ -31,11 +31,17 @@ final class BaselineShiftRenderer: NodeRenderer {
         output.addAttribute(attributeKey, value: true, range: range)
     }
 
-    /// Call exactly once per assembled attributed string, after all block
-    /// styling (line heights, margins) is in place.
-    static func applyShifts(to output: NSMutableAttributedString, config: MarkdownStyleConfig) {
+    /// Call exactly once per character of the assembled attributed string,
+    /// after all block styling (line heights, margins) is in place.
+    static func applyShifts(
+        to output: NSMutableAttributedString,
+        in range: NSRange? = nil,
+        config: MarkdownStyleConfig
+    ) {
+        let range = range ?? NSRange(location: 0, length: output.length)
         applyShift(
             to: output,
+            in: range,
             key: MarkdownAttribute.superscript,
             fontScale: config.superscript.fontScale ?? defaultFontScale,
             baselineOffsetScale: config.superscript.baselineOffsetScale
@@ -43,6 +49,7 @@ final class BaselineShiftRenderer: NodeRenderer {
         )
         applyShift(
             to: output,
+            in: range,
             key: MarkdownAttribute.subscript,
             fontScale: config.subscript.fontScale ?? defaultFontScale,
             baselineOffsetScale: -(config.subscript.baselineOffsetScale
@@ -52,12 +59,12 @@ final class BaselineShiftRenderer: NodeRenderer {
 
     private static func applyShift(
         to output: NSMutableAttributedString,
+        in range: NSRange,
         key: NSAttributedString.Key,
         fontScale: CGFloat,
         baselineOffsetScale: CGFloat
     ) {
-        let fullRange = NSRange(location: 0, length: output.length)
-        output.enumerateAttributes(in: fullRange, options: []) { attributes, range, _ in
+        output.enumerateAttributes(in: range, options: []) { attributes, range, _ in
             guard MarkdownAttributeValue.boolValue(from: attributes[key]),
                   let font = attributes[.font] as? UIFont
             else { return }

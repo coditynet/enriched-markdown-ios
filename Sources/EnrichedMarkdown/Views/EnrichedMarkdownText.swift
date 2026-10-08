@@ -19,6 +19,7 @@ public struct EnrichedMarkdownText: View {
     @Environment(\.markdownTaskListItemToggleEnabled) private var isTaskListToggleEnabled
     @Environment(\.markdownSpoilerOverlay) private var spoilerOverlay
     @Environment(\.markdownAccessibilityLabels) private var accessibilityLabels
+    @Environment(\.markdownStreaming) private var streaming
     @StateObject private var renderStore = MarkdownRenderStore()
 
     public init(_ markdown: String, flags: Md4cFlags = .commonMark) {
@@ -44,6 +45,8 @@ public struct EnrichedMarkdownText: View {
         let config = styleConfig
         return MarkdownTextViewRepresentable(
             attributedText: renderStore.attributedText,
+            lineage: renderStore.lineage,
+            fadesInText: streaming?.fadesInText ?? false,
             source: renderStore.source,
             styleConfig: config,
             onLinkPress: onLinkPress,
@@ -66,56 +69,50 @@ public struct EnrichedMarkdownText: View {
         )
         .fixedSize(horizontal: false, vertical: true)
         .onAppear {
-            renderStore.schedule(
-                markdown: markdown,
-                config: config,
-                flags: flags,
-                imageRequestHeaders: imageRequestHeaders,
-                plugins: renderPlugins
-            )
+            schedule(renderInputs(config: config))
         }
-        // The onChange closures run against the previous view value, so the
-        // changed value must come from the closure parameter — reading the
-        // view property would render one update behind.
-        .onChange(of: markdown) { newValue in
-            renderStore.schedule(
-                markdown: newValue,
-                config: config,
-                flags: flags,
-                imageRequestHeaders: imageRequestHeaders,
-                plugins: renderPlugins
-            )
-        }
-        .onChange(of: config) { newValue in
-            renderStore.schedule(
-                markdown: markdown,
-                config: newValue,
-                flags: flags,
-                imageRequestHeaders: imageRequestHeaders,
-                plugins: renderPlugins
-            )
-        }
-        .onChange(of: flags) { newValue in
-            renderStore.schedule(
-                markdown: markdown,
-                config: config,
-                flags: newValue,
-                imageRequestHeaders: imageRequestHeaders,
-                plugins: renderPlugins
-            )
-        }
-        .onChange(of: imageRequestHeaders) { newValue in
-            renderStore.schedule(
-                markdown: markdown,
-                config: config,
-                flags: flags,
-                imageRequestHeaders: newValue,
-                plugins: renderPlugins
-            )
+        // One change handler for every input: the closures run against the
+        // previous view value, so an input must come from the closure
+        // parameter — reading a view property would render one update
+        // behind, and a stream that ends together with its last token would
+        // render that token only after its final render.
+        .onChange(of: renderInputs(config: config)) { newValue in
+            schedule(newValue)
         }
         .onDisappear {
             renderStore.invalidate()
         }
+    }
+}
+
+private extension EnrichedMarkdownText {
+    struct RenderInputs: Equatable {
+        let markdown: String
+        let config: MarkdownStyleConfig
+        let flags: Md4cFlags
+        let imageRequestHeaders: [String: String]
+        let streaming: MarkdownStreamingOptions?
+    }
+
+    func renderInputs(config: MarkdownStyleConfig) -> RenderInputs {
+        RenderInputs(
+            markdown: markdown,
+            config: config,
+            flags: flags,
+            imageRequestHeaders: imageRequestHeaders,
+            streaming: streaming
+        )
+    }
+
+    func schedule(_ inputs: RenderInputs) {
+        renderStore.schedule(
+            markdown: inputs.markdown,
+            config: inputs.config,
+            flags: inputs.flags,
+            imageRequestHeaders: inputs.imageRequestHeaders,
+            plugins: renderPlugins,
+            streaming: inputs.streaming
+        )
     }
 }
 

@@ -28,6 +28,11 @@ final class MarkdownTextView: UITextView, SelectionHandleTouchReporting {
     /// document. This can.
     private var renderedText: NSAttributedString?
 
+    /// The streaming session `renderedText` came from, if any.
+    private var renderedLineage: StreamingLineage?
+
+    private lazy var tailFade = TailFadeAnimator(textView: self)
+
     private struct CachedFit {
         let width: CGFloat
         let text: NSAttributedString
@@ -276,17 +281,70 @@ final class MarkdownTextView: UITextView, SelectionHandleTouchReporting {
         return plain
     }
 
-    func setMarkdownAttributedText(_ attributedText: NSAttributedString) {
+    /// Shows `attributedText`. With a `lineage` from the same streaming
+    /// session as the current text, only the changed tail is edited in the
+    /// text storage — layout before it is kept, and so is the selection —
+    /// and with `fadesIn` the new text fades in.
+    func setMarkdownAttributedText(
+        _ attributedText: NSAttributedString,
+        lineage: StreamingLineage? = nil,
+        fadesIn: Bool = false
+    ) {
         // Identity first, and not as an optimization: the round trip through
         // `attributedText` does not compare equal to what was set, so the
         // guard below lets every update through and re-assigns the whole
         // document — measured at 30 re-assignments a second under a parent
         // that re-evaluates at frame rate.
         if let renderedText, renderedText === attributedText { return }
-        guard !(self.attributedText?.isEqual(to: attributedText) ?? false) else { return }
+        if let lineage, let renderedLineage, let renderedText, lineage.session == renderedLineage.session {
+            applyStreamingEdit(from: renderedText, to: attributedText, unchangedPrefix: renderedLineage.stableLength, fadesIn: fadesIn)
+            self.renderedLineage = lineage
+            return
+        }
+        renderedLineage = lineage
+        guard !(self.attributedText?.isEqual(to: attributedText) ?? false) else {
+            renderedText = attributedText
+            return
+        }
         renderedText = attributedText
-        cachedFit = nil
+        tailFade.finish()
         self.attributedText = attributedText
+        textDidChange()
+        // The first text of a stream fades in like every later one.
+        if fadesIn, lineage != nil {
+            tailFade.fadeIn(NSRange(location: 0, length: attributedText.length))
+        }
+    }
+
+    private func applyStreamingEdit(
+        from old: NSAttributedString,
+        to new: NSAttributedString,
+        unchangedPrefix: Int,
+        fadesIn: Bool
+    ) {
+        let diff = AttributedTextDiff(from: old, to: new, unchangedPrefix: unchangedPrefix)
+        let previousFit = cachedFit
+        renderedText = new
+        guard !diff.isEmpty else {
+            // Same rendering: keep the measurement for the new identity.
+            if let previousFit {
+                cachedFit = CachedFit(width: previousFit.width, text: new, height: previousFit.height)
+            }
+            return
+        }
+
+        tailFade.textDidChange(from: diff.replacedRange.location)
+        textStorage.beginEditing()
+        textStorage.replaceCharacters(in: diff.replacedRange, with: new.attributedSubstring(from: diff.replacementRange))
+        textStorage.endEditing()
+        textDidChange()
+        if fadesIn {
+            tailFade.fadeIn(diff.insertedRange)
+        }
+    }
+
+    private func textDidChange() {
+        cachedFit = nil
         invalidateIntrinsicContentSize()
         setDecorationNeedsDisplay()
         accessibilityTreeIsStale = true
@@ -336,6 +394,7 @@ final class MarkdownTextView: UITextView, SelectionHandleTouchReporting {
         layoutDecorationView()
         setDecorationNeedsDisplay()
         spoilerOverlays.update()
+        tailFade.fadeInstalledAttachmentViews()
     }
 }
 
