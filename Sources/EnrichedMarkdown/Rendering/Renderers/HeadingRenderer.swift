@@ -1,7 +1,7 @@
 import UIKit
 
 final class HeadingRenderer: NodeRenderer {
-    private let factory: RendererFactory
+    private unowned let factory: RendererFactory
     private let config: MarkdownStyleConfig
 
     init(factory: RendererFactory, config: MarkdownStyleConfig) {

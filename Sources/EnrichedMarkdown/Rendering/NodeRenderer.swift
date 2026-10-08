@@ -5,7 +5,7 @@ package protocol NodeRenderer: AnyObject {
 }
 
 final class ChildrenOnlyRenderer: NodeRenderer {
-    private let factory: RendererFactory
+    private unowned let factory: RendererFactory
 
     init(factory: RendererFactory) {
         self.factory = factory

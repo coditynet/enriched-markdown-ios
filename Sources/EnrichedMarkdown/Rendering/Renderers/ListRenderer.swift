@@ -1,7 +1,7 @@
 import UIKit
 
 final class ListRenderer: NodeRenderer {
-    private let factory: RendererFactory
+    private unowned let factory: RendererFactory
     private let config: MarkdownStyleConfig
     private let isOrdered: Bool
 

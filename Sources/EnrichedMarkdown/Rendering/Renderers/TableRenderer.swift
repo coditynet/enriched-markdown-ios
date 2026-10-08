@@ -3,7 +3,7 @@ import UIKit
 /// Renders a GFM table as a view-provider attachment; cell content goes
 /// through the regular renderer factory.
 final class TableRenderer: NodeRenderer {
-    private let factory: RendererFactory
+    private unowned let factory: RendererFactory
     private let config: MarkdownStyleConfig
 
     init(factory: RendererFactory, config: MarkdownStyleConfig) {
