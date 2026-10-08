@@ -12,7 +12,7 @@ struct BlockDecorationConfig {
     var blockquoteBorderWidth: CGFloat = 3
     var blockquoteGapWidth: CGFloat = 16
     var blockquoteBorderColor: UIColor = defaultBlockquoteBorderColor
-    var blockquoteBackgroundColor: UIColor = UIColor(red: 0.98, green: 0.98, blue: 0.99, alpha: 1)
+    var blockquoteBackgroundColor: UIColor = .clear
 
     var listGapWidth: CGFloat = 12
     var listBulletSize: CGFloat = 6
