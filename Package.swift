@@ -42,12 +42,12 @@ let package = Package(
         ),
         // Prebuilt RaTeX layout engine (Rust behind a C FFI; imports as
         // RaTeXFFI): erweixin/RaTeX v0.1.14, re-hosted on this fork's
-        // releases with the same sha256 as the monorepo's
-        // vendor/ratex-version.json.
+        // releases with the headers and module map in Headers/RaTeXFFI/,
+        // so they don't collide with other xcframeworks' include/module.modulemap.
         .binaryTarget(
             name: "RaTeX",
-            url: "https://github.com/coditynet/enriched-markdown-ios/releases/download/ratex-v0.1.14/RaTeX.xcframework.zip",
-            checksum: "16b84a5e9b9f80ed4910c490f96dda047662e9bdd0934817ecf4464cf02581f2"
+            url: "https://github.com/coditynet/enriched-markdown-ios/releases/download/ratex-v0.1.14-1/RaTeX.xcframework.zip",
+            checksum: "2c02554bcc30184b59084efffe41c1e4490fc13441b4f34af72da90c4eddff22"
         ),
         // Vendor/'s upstream RaTeX sources (see Vendor/LICENSE) and the KaTeX
         // Fonts are symlinks into the RN package's vendored files —
