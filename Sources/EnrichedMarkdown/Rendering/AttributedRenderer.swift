@@ -25,14 +25,27 @@ final class AttributedRenderer {
     }
 
     func renderRoot(_ root: MarkdownASTNode) -> NSMutableAttributedString {
-        let context = RenderContext(factory: factory)
+        let context = makeRootContext()
         let output = NSMutableAttributedString()
+        renderBlocks(root.children, into: output, context: context)
+        context.clearBlockStyle()
+        finishBlocks(in: output, range: NSRange(location: 0, length: output.length))
+        return output
+    }
 
+    /// A context as the document's first root block sees it.
+    func makeRootContext() -> RenderContext {
+        let context = RenderContext(factory: factory)
         let paragraphFont = config.paragraph.font ?? UIFont.preferredFont(forTextStyle: .body)
         let paragraphColor = config.paragraph.foregroundColor ?? UIColor.label
         context.setBlockStyle(font: paragraphFont, color: paragraphColor)
+        return context
+    }
 
-        for child in root.children {
+    /// Renders root-level blocks after whatever `output` already holds;
+    /// streaming renders a document in runs of blocks this way.
+    func renderBlocks(_ blocks: [MarkdownASTNode], into output: NSMutableAttributedString, context: RenderContext) {
+        for child in blocks {
             // A synthetic paragraph gives bare plugin block nodes their
             // block margins and alignment.
             if let margins = rootBlockMargins[child.type] {
@@ -44,10 +57,11 @@ final class AttributedRenderer {
             }
             factory.render(child, into: output, context: context)
         }
+    }
 
-        context.clearBlockStyle()
-        BaselineShiftRenderer.applyShifts(to: output, config: config)
-        SpoilerConcealment.conceal(output, in: NSRange(location: 0, length: output.length))
-        return output
+    /// The passes that run over finished blocks: exactly once per character.
+    func finishBlocks(in output: NSMutableAttributedString, range: NSRange) {
+        BaselineShiftRenderer.applyShifts(to: output, in: range, config: config)
+        SpoilerConcealment.conceal(output, in: range)
     }
 }
