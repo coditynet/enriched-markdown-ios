@@ -70,6 +70,12 @@ final class LaTeXRenderingTests: XCTestCase {
         XCTAssertGreaterThan(display.ascent + display.descent, inline.ascent + inline.descent)
     }
 
+    func testTypesetsInDarkModeAndExtendedRangeColors() {
+        let dark = UITraitCollection(userInterfaceStyle: .dark)
+        XCTAssertNotNil(MathRenderer.raTeXTypeset("12", displayMode: false, fontSize: 17, color: UIColor.label.resolvedColor(with: dark)))
+        XCTAssertNotNil(MathRenderer.raTeXTypeset("12", displayMode: false, fontSize: 17, color: UIColor(red: 1.2, green: -0.1, blue: 0.5, alpha: 1)))
+    }
+
     func testInvalidLatexReturnsNil() {
         XCTAssertNil(MathRenderer.raTeXTypeset(#"\frac{1}{"#, displayMode: false, fontSize: 17, color: .black))
     }

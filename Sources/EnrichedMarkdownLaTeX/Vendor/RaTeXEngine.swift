@@ -8,6 +8,13 @@ import AppKit
 import UIKit
 #endif
 
+/// RaTeX rejects components outside [0, 1]; extended-range colors (and
+/// white resolving to 1.0000001) are clamped into it.
+private func unitColor(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat) -> RatexColor {
+    func unit(_ value: CGFloat) -> Float { Float(min(max(value, 0), 1)) }
+    return RatexColor(r: unit(r), g: unit(g), b: unit(b), a: unit(a))
+}
+
 #if os(macOS)
 
 private func ffiColor(from color: NSColor, appearance: NSAppearance? = nil) -> RatexColor {
@@ -20,7 +27,7 @@ private func ffiColor(from color: NSColor, appearance: NSAppearance? = nil) -> R
         var b: CGFloat = 0
         var a: CGFloat = 0
         rgb.getRed(&r, green: &g, blue: &b, alpha: &a)
-        return RatexColor(r: Float(r), g: Float(g), b: Float(b), a: Float(a))
+        return unitColor(r, g, b, a)
     }
 
     if let appearance {
@@ -43,7 +50,7 @@ private func ffiColor(from color: UIColor, traitCollection: UITraitCollection? =
     var b: CGFloat = 0
     var a: CGFloat = 0
     if resolved.getRed(&r, green: &g, blue: &b, alpha: &a) {
-        return RatexColor(r: Float(r), g: Float(g), b: Float(b), a: Float(a))
+        return unitColor(r, g, b, a)
     }
 
     let fallbackSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
@@ -59,12 +66,7 @@ private func ffiColor(from color: UIColor, traitCollection: UITraitCollection? =
         return RatexColor(r: 0, g: 0, b: 0, a: 1)
     }
 
-    return RatexColor(
-        r: Float(components[0]),
-        g: Float(components[1]),
-        b: Float(components[2]),
-        a: Float(components[3])
-    )
+    return unitColor(components[0], components[1], components[2], components[3])
 }
 
 #endif
