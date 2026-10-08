@@ -334,7 +334,8 @@ typedef struct MD_BLOCK_TD_DETAIL {
 
 /* Detailed info for MD_BLOCK_ADMONITION. */
 typedef struct MD_BLOCK_ADMONITION_DETAIL {
-  MD_ATTRIBUTE type; /* One of "note", "tip", "important", "warning", "caution" */
+  MD_ATTRIBUTE type; /* "note", "tip", "important", "warning", "caution", or any other
+                     * `[!TAG]` of ASCII letters, digits, "-" and "_" as written. */
 } MD_BLOCK_ADMONITION_DETAIL;
 
 /* Detailed info for MD_SPAN_A. */

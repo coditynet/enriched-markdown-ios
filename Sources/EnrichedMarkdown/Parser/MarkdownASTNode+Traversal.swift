@@ -24,7 +24,7 @@ public extension MarkdownASTNode {
     }
 
     /// The node's content and its descendants' text, in document order.
-    package func flattenedText() -> String {
+    func flattenedText() -> String {
         var buffer = ""
         appendFlattenedText(to: &buffer)
         return buffer

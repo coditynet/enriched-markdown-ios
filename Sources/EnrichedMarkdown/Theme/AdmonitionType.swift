@@ -1,5 +1,6 @@
-/// The GitHub alert types; the parser's `admonitionType` attribute is always
-/// one of these raw values.
+/// The GitHub alert types, the parser's `admonitionType` attribute for them.
+/// Any other `> [!TAG]` keeps its tag as written, for a render plugin to
+/// claim; unclaimed, it renders as a plain quote.
 public enum AdmonitionType: String, CaseIterable, Sendable {
     case note
     case tip

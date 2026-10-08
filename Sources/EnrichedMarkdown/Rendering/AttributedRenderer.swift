@@ -25,7 +25,7 @@ final class AttributedRenderer {
     }
 
     func renderRoot(_ root: MarkdownASTNode) -> NSMutableAttributedString {
-        let context = RenderContext()
+        let context = RenderContext(factory: factory)
         let output = NSMutableAttributedString()
 
         let paragraphFont = config.paragraph.font ?? UIFont.preferredFont(forTextStyle: .body)
@@ -38,11 +38,11 @@ final class AttributedRenderer {
             if let margins = rootBlockMargins[child.type] {
                 context.pluginBlockMargins = margins
                 let paragraph = MarkdownASTNode(type: .paragraph, children: [child])
-                factory.renderer(for: .paragraph).render(node: paragraph, into: output, context: context)
+                factory.render(paragraph, into: output, context: context)
                 context.pluginBlockMargins = nil
                 continue
             }
-            factory.renderer(for: child.type).render(node: child, into: output, context: context)
+            factory.render(child, into: output, context: context)
         }
 
         context.clearBlockStyle()
